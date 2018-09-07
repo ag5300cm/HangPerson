@@ -1,0 +1,255 @@
+
+
+
+import hangmanPic
+import functions
+import randomWord
+import mySQLpyFile
+import userInterface
+
+guessNumber = 0  # this number counts how many times you got something wrong
+
+magicWord = randomWord.random_choice_from_lists()  # get the word user needs to guess
+#print(magicWord)  #used for testing code
+
+listOfCorrectLetters = []  # this list is used for checking against the magic word
+
+successOrBust = False
+while successOrBust != True:  # will continue to go, until user is dead or they guess the correct word.
+   print(hangmanPic.hangmanPic(guessNumber))  # will display the little hangman
+   if guessNumber >= 6:  # will end the game if to many wrong guesses
+        print("The hangman word was: " + magicWord)  # lets the user know what word they should have figured out
+        exit(0)
+   print(functions.displayWordForUser(listOfCorrectLetters, magicWord))  # shows what they got right if any
+   print("Other options to type in: quit, save, load, hint")
+   userGuess = userInterface.userInput()  # will summon function that gets user input
+   if userGuess == "quit":
+       exit(0)
+   elif userGuess == "hint":
+       list_name = (randomWord.random_list_choice())   # todo add hint, not quite working right
+       print(list_name)
+       guessNumber = guessNumber - 1   # this will cancel out the negative effects from asking for a hint  todo make a function?
+   elif userGuess == "save":
+        mySQLpyFile.saved_data(magicWord, listOfCorrectLetters, guessNumber)
+        guessNumber = guessNumber - 1  # this will cancel out the negative effects from asking for a save
+   elif userGuess == "load":
+       data_array = mySQLpyFile.read_data()  # calling a function to read data
+       #print(data_array)  # used for data testing
+       magicWord = (data_array[0]).rstrip()  # this will make the magic word what it was saved as
+       list_O_letters = "" + (data_array[1]).rstrip()  # this is a string to put the data from the array into
+       for i in list_O_letters:  # going trought each letter in the string
+           listOfCorrectLetters.append(i)  # adding it to the correct list of letters
+       guessNumber = int((data_array[2]).rstrip())  # getting guess number from the array
+       guessNumber = guessNumber - 1
+   else:
+       correctOrNot = functions.letterCheck(userGuess, magicWord)
+       if correctOrNot == 0:  # if user got it wrong will add to guess number
+            guessNumber = guessNumber + 1
+       else:
+            listOfCorrectLetters.append(correctOrNot)  # adding to the list of correct letters in the selected word
+
+
+
+====================================================================================================================
+
+def numberOfSpaces(magicWord): # this function go through how many letters there are in the word for the user to guess and will show blank spaces for them
+
+    spaces_needed = len(magicWord)
+    display_word = ""
+    for i in range(0, spaces_needed):
+        display_word = display_word + "_ "
+
+    return display_word
+
+def letterCheck(char, magicWord): # this function will check if the users letter guess matches one of the letters in the magic word
+
+    return_me_letter = ""
+    returnMeNoose = 0  # zero
+
+    for i in magicWord: # checking each letter in magicword to see if it matches
+        if char == i:
+            return_me_letter = char
+            print("Correct!") # letting user know it was correct
+            return return_me_letter  # could probably just return char
+
+    print("Nope sorry") # letting user know their guess was no good
+    return returnMeNoose
+
+def displayWordForUser(listLetters, magicWord):  # this def will display what the user has got so far
+
+    if not listLetters: # will show how many spaces there are for the user
+        showing_blank_spaces = numberOfSpaces(magicWord)
+        #print("_ _ _ _ _ ")
+        return showing_blank_spaces
+
+    display_word_for_user = ""
+    if len(listLetters) > 0:  # checks that the user has one correct letter before going through the stuff below
+        for letter_Magic in magicWord: # going through each letter in magic word
+            letter_check_empty = False  # used to make sure we add only one letter or one blank space for the magic word
+            for letter_L in listLetters:  # going trough the list of correct letter guesses so far
+                if letter_L == letter_Magic:  # do we have a match? do below
+                    display_word_for_user = display_word_for_user + letter_L + " "  # adding the letter to the magic word for display
+                    letter_check_empty = True
+                    break
+                #else:
+                #    display_word_for_user = display_word_for_user + "_ "
+            if letter_check_empty == False: # no match will just add a Blank line and a space
+                display_word_for_user = display_word_for_user + "_ "
+
+    win_check(display_word_for_user)
+
+    return display_word_for_user
+
+def win_check(display_word_for_user):  # this checks if the user wins and will stop asking for letters
+
+    win_question_mark = True  # boolean for if user won, currently set to Win! or True
+
+    for i in display_word_for_user:  # goes through the word will check for blank spaces meaning the user has not won
+        if i in ["_", "_ "]:
+            win_question_mark = False  # The user has not won yet
+
+    if win_question_mark == True:  # if the user wins, will do below
+        print("You Win !!!!!!!!")  # letting user know they won
+        exit(0)
+
+
+===========================================================================================
+
+
+# This is to try and meet the requirement of separating user interface from game logic
+
+def userInput():
+    userGuess = input("Care to guess a lowercase letter? ")  # getting user input
+    userGuess = userGuess.lower()  # in case they guess a upper case letter
+    return userGuess
+
+============================================================================================
+
+
+# this takes the three variables below and saves them
+def saved_data(magicWord, listOfCorrectGuesses, guessNumber):
+
+    save_string = "".join(listOfCorrectGuesses)  # converting to string because list can't be saved
+    guessN_string_convert = str(guessNumber)   # converting to string because int's can't be saved
+
+    filetoWrite = open("saveData.txt", 'w')  # finding the file to save to and letting them know we want to write
+    filetoWrite.write(magicWord + "\n" + save_string + "\n" + guessN_string_convert)  # saving each item on a new line
+    filetoWrite.close()
+
+
+def read_data():
+
+    # Got code below from Stackoverflow, added the return array and ins.close() part for usage in my code
+    # https://stackoverflow.com/questions/3277503/in-python-how-do-i-read-a-file-line-by-line-into-a-list
+    with open("saveData.txt", "r") as ins:  # to open file you want to read
+        array = []  # Blank array to add data
+        for line in ins:  # will go through each line that is saved
+            array.append(line)  # adding the line read to the array
+
+    ins.close()  # closing out the
+    #print(array) # used to test data
+    return array  # returning the arrary for use
+
+
+==============================================================================================
+
+
+import random
+
+wordList5 = ["range", "space", "never", "false", "month", "juicy", "fuzzy", "pizza", "quack"]
+
+vegetables = ["broccoli", "celery", "cauliflower", "cabbage", "spinach", "lettuce", "onion", "rhubarb", "carrot"]
+vegetables.extend(("turnip", "pumpkin", "potato", "cucumber"))
+
+space_craft = ["sputnik", "vostok", "gemini", "apollo", "columbia", "challenger", "discovery", "atlantis", "endeavour"]
+space_craft.extend(("enterprise", "voyager"))
+
+movies = ["titanic", "scarface", "inception", "casablanca", "vertigo", "gladiator", "zootopia", "zombieland", "platoon"]
+movies.extend(("batman", "halloween", "predator", "goodfellas", "grease", "avatar", "frozen", "psycho", "braveheart"))
+
+list_of_lists = [vegetables, space_craft, movies]
+def random_choice_from_lists() :
+
+    choice_list = random_list_choice()
+    #print(choice_list)  # used for testing code
+    choice_word = random.choice(choice_list)
+    return choice_word
+
+def random_list_choice() :
+    choice_list = random.choice(list_of_lists)
+    return choice_list
+
+=============================================================================================
+
+
+def hangmanPic(numberX):
+
+    if numberX == 0:
+
+        print("      /-------|| ")
+        print("      |       || ")
+        print("              || ")
+        print("              || ")
+        print("              || ")
+        print("              || ")
+        print("..............|| ")
+
+    elif numberX == 1:
+        print("      /-------|| ")
+        print("      |       || ")
+        print("      O       || ")
+        print("              || ")
+        print("              || ")
+        print("              || ")
+        print("..............|| ")
+
+    elif numberX == 2:
+        print("      /-------|| ")
+        print("      |       || ")
+        print("      O       || ")
+        print("      |       || ")
+        print("              || ")
+        print("              || ")
+        print("..............|| ")
+
+    elif numberX == 3:
+        print("      /-------|| ")
+        print("      |       || ")
+        print("      O       || ")
+        print("      |       || ")
+        print("     /        || ")
+        print("              || ")
+        print("..............|| ")
+
+    elif numberX == 4:
+        print("      /-------|| ")
+        print("      |       || ")
+        print("      O       || ")
+        print("      |       || ")
+        print("     / \      || ")
+        print("              || ")
+        print("..............|| ")
+
+    elif numberX == 5:
+        print("      /-------|| ")
+        print("      |       || ")
+        print("      O       || ")
+        print("     /|       || ")
+        print("     / \      || ")
+        print("              || ")
+        print("..............|| ")
+
+    elif numberX == 6:
+        print("      /-------|| ")
+        print("      |       || ")
+        print("      O       || ")
+        print("     /|\      || ")
+        print("     / \      || ")
+        print("              || ")
+        print("..............|| ")
+        print("  You Lose.")
+
+
+
+
+
